@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rally Track Viewer</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: transparent !important;
+        }
+        
+        html {
+            background: transparent !important;
+        }
+        
+        #map {
+            width: 100vw;
+            height: 100vh;
+            background: transparent !important;
+        }
+        
+        /* Transparent mode styles */
+        .transparent-mode .leaflet-container {
+            background: transparent !important;
+        }
+        
+        .transparent-mode .leaflet-tile-pane {
+            opacity: 0 !important;
+        }
+        
+        .transparent-mode {
+            background: transparent !important;
+        }
+        
+        /* Options menu */
+        #optionsMenu {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            min-width: 200px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .menu-section {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .menu-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .menu-section h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #ff1493;
+        }
+        
+        .menu-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .menu-item label {
+            flex: 1;
+            margin-right: 10px;
+            font-size: 13px;
+        }
+        
+        .menu-item input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+        
+        .menu-item select,
+        .menu-item input[type="file"] {
+            flex: 1;
+            max-width: 120px;
+            padding: 4px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background: white;
+            font-size: 12px;
+        }
+        
+        .menu-item input[type="file"] {
+            font-size: 11px;
+        }
+        
+        .menu-item input[type="color"] {
+            flex: 1;
+            max-width: 50px;
+            height: 30px;
+            padding: 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .menu-item input[type="range"] {
+            flex: 1;
+            max-width: 80px;
+            margin-right: 8px;
+        }
+        
+        .menu-item span {
+            font-size: 12px;
+            min-width: 20px;
+            text-align: center;
+        }
+        
+        /* Toggle button */
+        #toggleMenu {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1001;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #toggleMenu:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+        
+        /* Hide menu by default */
+        #optionsMenu.hidden {
+            display: none;
+        }
+        
+        /* Info panel */
+        #info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        
+        /* Track styles */
+        .track-line {
+            stroke: #ff1493;
+            stroke-width: 4;
+            stroke-opacity: 0.8;
+            fill: none;
+        }
+        
+        /* Icon styles */
+        .kml-icon {
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <!-- Toggle button -->
+    <button id="toggleMenu" title="Toggle Options Menu">⚙️</button>
+    
+    <!-- Options Menu -->
+    <div id="optionsMenu" class="hidden">
+        <div class="menu-section">
+            <h3>📁 File</h3>
+            <div class="menu-item">
+                <label>KML File:</label>
+                <input type="file" id="kmlFile" accept=".kml" />
+            </div>
+        </div>
+        
+        <div class="menu-section">
+            <h3>🗺️ Map</h3>
+            <div class="menu-item">
+                <label>Map Type:</label>
+                <select id="mapType">
+                    <option value="osm">OpenStreetMap</option>
+                    <option value="satellite">Satellite</option>
+                    <option value="terrain">Terrain</option>
+                    <option value="none">None (Transparent)</option>
+                </select>
+            </div>
+            <div class="menu-item">
+                <label>Transparent Background:</label>
+                <input type="checkbox" id="transparentBg" />
+            </div>
+        </div>
+        
+        <div class="menu-section">
+            <h3>🎯 Display</h3>
+            <div class="menu-item">
+                <label>Show Tracks:</label>
+                <input type="checkbox" id="showTracks" checked />
+            </div>
+            <div class="menu-item">
+                <label>Show Icons:</label>
+                <input type="checkbox" id="showIcons" checked />
+            </div>
+        </div>
+        
+        <div class="menu-section">
+            <h3>🛤️ Track Style</h3>
+            <div class="menu-item">
+                <label>Track Color:</label>
+                <input type="color" id="trackColor" value="#ff1493" />
+            </div>
+            <div class="menu-item">
+                <label>Track Width:</label>
+                <input type="range" id="trackWidth" min="1" max="10" value="4" />
+                <span id="trackWidthValue">4</span>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Info Panel -->
+    <div id="info">
+        <div>Tracks: <span id="trackCount">0</span></div>
+        <div>Icons: <span id="iconCount">0</span></div>
+    </div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
