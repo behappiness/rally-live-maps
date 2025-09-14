@@ -5,6 +5,9 @@
  */
 
 export const CONFIG = {
+    // Configuration version - increment to force cache reset
+    version: '1.2.0',
+    
     // Map Settings
     map: {
         // Default map center (lat, lon)
@@ -12,6 +15,18 @@ export const CONFIG = {
         
         // Default zoom level
         defaultZoom: 13,
+        
+        // Zoom settings for fine-grained control
+        zoom: {
+            zoomDelta: 0.25,        // Zoom step size (default: 1)
+            zoomSnap: 0.25,         // Zoom snap interval (default: 1)
+            wheelPxPerZoomLevel: 120, // Mouse wheel sensitivity (default: 60)
+            maxZoom: 20,            // Maximum zoom level
+            minZoom: 8              // Minimum zoom level
+        },
+        
+        // Map opacity (0-100)
+        opacity: 100,
         
         // Available map types
         mapTypes: {
@@ -37,9 +52,9 @@ export const CONFIG = {
         
         // Track visualization settings
         tracks: {
-            color: '#ff1493',       // Magenta color for tracks
-            weight: 4,              // Line thickness
-            opacity: 0.8,           // Line opacity
+            color: '#e20074',       // Magenta color for tracks
+            weight: 10,             // Line thickness
+            opacity: 100,           // Line opacity (0-100)
             smoothFactor: 1         // Line smoothing
         },
         
@@ -48,12 +63,13 @@ export const CONFIG = {
     // KML File Settings
     kml: {
         // Default KML file to auto-load
-        defaultFile: '2025gyor-2025-09-12_GE.kml',
+        defaultFile: '2025gyor-2025-09-14_GE_SS_only.kml',
         
         // Icon settings
         icons: {
-            defaultSize: [24, 24],      // Default icon size [width, height]
-            defaultAnchor: [12, 12],    // Default anchor point
+            defaultSize: [32, 32],      // Default icon size [width, height]
+            defaultAnchor: [16, 16],    // Default anchor point
+            scale: 2.0,                 // Icon scale multiplier (0.5 - 3.0)
             showPopups: true,           // Show popups on click
             cluster: false              // Cluster nearby icons
         }
@@ -121,12 +137,22 @@ export function loadConfigFromStorage() {
     try {
         const stored = localStorage.getItem('rallyTrackViewerConfig');
         if (stored) {
-            const updates = JSON.parse(stored);
-            updateConfig(updates);
+            const storedConfig = JSON.parse(stored);
+            
+            // Check version compatibility
+            if (storedConfig.version !== CONFIG.version) {
+                console.log(`Configuration version mismatch (stored: ${storedConfig.version || 'unknown'}, current: ${CONFIG.version}). Clearing cache.`);
+                localStorage.removeItem('rallyTrackViewerConfig');
+                return;
+            }
+            
+            updateConfig(storedConfig);
             console.log('Configuration loaded from localStorage');
         }
     } catch (error) {
         console.warn('Failed to load configuration from localStorage:', error);
+        // Clear corrupted config
+        localStorage.removeItem('rallyTrackViewerConfig');
     }
 }
 
@@ -135,7 +161,9 @@ export function loadConfigFromStorage() {
  */
 export function saveConfigToStorage() {
     try {
-        localStorage.setItem('rallyTrackViewerConfig', JSON.stringify(CONFIG));
+        // Ensure version is included when saving
+        const configToSave = { ...CONFIG, version: CONFIG.version };
+        localStorage.setItem('rallyTrackViewerConfig', JSON.stringify(configToSave));
         console.log('Configuration saved to localStorage');
     } catch (error) {
         console.warn('Failed to save configuration to localStorage:', error);
@@ -160,6 +188,36 @@ export function updateTrackStyle(trackStyle) {
     const updates = {
         map: {
             tracks: trackStyle
+        }
+    };
+    updateConfig(updates);
+    saveConfigToStorage();
+}
+
+/**
+ * Update map opacity configuration
+ * @param {number} opacity - Map opacity (0-100)
+ */
+export function updateMapOpacity(opacity) {
+    const updates = {
+        map: {
+            opacity: opacity
+        }
+    };
+    updateConfig(updates);
+    saveConfigToStorage();
+}
+
+/**
+ * Update icon scale configuration
+ * @param {number} scale - Icon scale multiplier (0.5-3.0)
+ */
+export function updateIconScale(scale) {
+    const updates = {
+        kml: {
+            icons: {
+                scale: scale
+            }
         }
     };
     updateConfig(updates);

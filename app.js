@@ -5,7 +5,7 @@
 
 import { KMLParser } from './modules/KMLParser.js';
 import { MapManager } from './modules/MapManager.js';
-import { CONFIG, updateTrackStyle } from './config.js';
+import { CONFIG, updateTrackStyle, updateMapOpacity, updateIconScale } from './config.js';
 
 class RallyTrackViewer {
     constructor() {
@@ -66,6 +66,13 @@ class RallyTrackViewer {
             trackColor: document.getElementById('trackColor'),
             trackWidth: document.getElementById('trackWidth'),
             trackWidthValue: document.getElementById('trackWidthValue'),
+            trackOpacity: document.getElementById('trackOpacity'),
+            trackOpacityValue: document.getElementById('trackOpacityValue'),
+            mapOpacity: document.getElementById('mapOpacity'),
+            mapOpacityValue: document.getElementById('mapOpacityValue'),
+            iconSize: document.getElementById('iconSize'),
+            iconSizeValue: document.getElementById('iconSizeValue'),
+            clearCache: document.getElementById('clearCache'),
             trackCount: document.getElementById('trackCount'),
             iconCount: document.getElementById('iconCount'),
         };
@@ -138,6 +145,47 @@ class RallyTrackViewer {
             });
         }
 
+        // Track opacity slider
+        if (this.elements.trackOpacity) {
+            this.elements.trackOpacity.addEventListener('input', (e) => {
+                const opacity = parseInt(e.target.value);
+                this.updateTrackOpacity(opacity);
+                if (this.elements.trackOpacityValue) {
+                    this.elements.trackOpacityValue.textContent = opacity + '%';
+                }
+            });
+        }
+
+        // Map opacity slider
+        if (this.elements.mapOpacity) {
+            this.elements.mapOpacity.addEventListener('input', (e) => {
+                const opacity = parseInt(e.target.value);
+                this.updateMapOpacity(opacity);
+                if (this.elements.mapOpacityValue) {
+                    this.elements.mapOpacityValue.textContent = opacity + '%';
+                }
+            });
+        }
+
+        // Icon size slider
+        if (this.elements.iconSize) {
+            this.elements.iconSize.addEventListener('input', (e) => {
+                const scale = parseFloat(e.target.value);
+                this.updateIconSize(scale);
+                if (this.elements.iconSizeValue) {
+                    this.elements.iconSizeValue.textContent = scale + 'x';
+                }
+            });
+        }
+
+        // Clear cache button
+        if (this.elements.clearCache) {
+            this.elements.clearCache.addEventListener('click', () => {
+                localStorage.removeItem('rallyTrackViewerConfig');
+                window.location.reload();
+            });
+        }
+
     }
 
     /**
@@ -145,7 +193,7 @@ class RallyTrackViewer {
      */
     async autoLoadKML() {
         try {
-            const kmlFile = '2025gyor-2025-09-12_GE.kml';
+            const kmlFile = CONFIG.kml.defaultFile;
             const { tracks, icons } = await this.kmlParser.loadKMLFromURL(kmlFile);
             this.handleKMLLoaded(tracks, icons);
             console.log(`RallyTrackViewer: Auto-loaded KML file: ${kmlFile}`);
@@ -252,6 +300,36 @@ class RallyTrackViewer {
         if (this.elements.trackWidthValue) {
             this.elements.trackWidthValue.textContent = CONFIG.map.tracks.weight;
         }
+        
+        // Set track opacity from config
+        if (this.elements.trackOpacity) {
+            this.elements.trackOpacity.value = CONFIG.map.tracks.opacity;
+        }
+        
+        // Update track opacity display
+        if (this.elements.trackOpacityValue) {
+            this.elements.trackOpacityValue.textContent = CONFIG.map.tracks.opacity + '%';
+        }
+        
+        // Set map opacity from config
+        if (this.elements.mapOpacity) {
+            this.elements.mapOpacity.value = CONFIG.map.opacity;
+        }
+        
+        // Update map opacity display
+        if (this.elements.mapOpacityValue) {
+            this.elements.mapOpacityValue.textContent = CONFIG.map.opacity + '%';
+        }
+        
+        // Set icon size from config
+        if (this.elements.iconSize) {
+            this.elements.iconSize.value = CONFIG.kml.icons.scale;
+        }
+        
+        // Update icon size display
+        if (this.elements.iconSizeValue) {
+            this.elements.iconSizeValue.textContent = CONFIG.kml.icons.scale + 'x';
+        }
     }
 
     /**
@@ -275,11 +353,50 @@ class RallyTrackViewer {
     }
 
     /**
+     * Update track opacity
+     * @param {number} opacity - New track opacity (0-100)
+     */
+    updateTrackOpacity(opacity) {
+        updateTrackStyle({ opacity: opacity });
+        this.refreshTracks();
+        console.log(`Track opacity updated to: ${opacity}%`);
+    }
+
+    /**
+     * Update map opacity
+     * @param {number} opacity - New map opacity (0-100)
+     */
+    updateMapOpacity(opacity) {
+        updateMapOpacity(opacity);
+        this.mapManager.setMapOpacity(opacity);
+        console.log(`Map opacity updated to: ${opacity}%`);
+    }
+
+    /**
+     * Update icon size
+     * @param {number} scale - New icon scale (0.5-3.0)
+     */
+    updateIconSize(scale) {
+        updateIconScale(scale);
+        this.refreshIcons();
+        console.log(`Icon size updated to: ${scale}x`);
+    }
+
+    /**
      * Refresh track display with current styling
      */
     refreshTracks() {
         if (this.tracks.length > 0) {
             this.mapManager.displayTracks(this.tracks);
+        }
+    }
+
+    /**
+     * Refresh icon display with current styling
+     */
+    refreshIcons() {
+        if (this.icons.length > 0) {
+            this.mapManager.displayIcons(this.icons);
         }
     }
 

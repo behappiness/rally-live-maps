@@ -32,8 +32,14 @@ export class MapManager {
             ...options
         };
 
-        // Initialize Leaflet map
-        this.map = L.map(this.mapElementId).setView(defaultOptions.center, defaultOptions.zoom);
+        // Initialize Leaflet map with fine-grained zoom settings
+        this.map = L.map(this.mapElementId, {
+            zoomDelta: CONFIG.map.zoom.zoomDelta,
+            zoomSnap: CONFIG.map.zoom.zoomSnap,
+            wheelPxPerZoomLevel: CONFIG.map.zoom.wheelPxPerZoomLevel,
+            maxZoom: CONFIG.map.zoom.maxZoom,
+            minZoom: CONFIG.map.zoom.minZoom
+        }).setView(defaultOptions.center, defaultOptions.zoom);
         
         // Create layer groups
         this.trackLayerGroup = L.layerGroup().addTo(this.map);
@@ -75,13 +81,14 @@ export class MapManager {
         // Create and add new tile layer
         this.currentTileLayer = L.tileLayer(mapConfig.url, {
             attribution: mapConfig.attribution,
-            maxZoom: mapConfig.maxZoom
+            maxZoom: mapConfig.maxZoom,
+            opacity: CONFIG.map.opacity / 100
         });
         
         this.currentTileLayer.addTo(this.map);
         this.currentMapType = mapType;
         
-        console.log(`MapManager: Map type changed to ${mapType}`);
+        console.log(`MapManager: Map type changed to ${mapType} with opacity ${CONFIG.map.opacity}%`);
     }
 
     /**
@@ -106,7 +113,7 @@ export class MapManager {
             const polyline = L.polyline(track.points, {
                 color: CONFIG.map.tracks.color,
                 weight: CONFIG.map.tracks.weight,
-                opacity: CONFIG.map.tracks.opacity,
+                opacity: CONFIG.map.tracks.opacity / 100,
                 smoothFactor: CONFIG.map.tracks.smoothFactor
             });
             
@@ -152,12 +159,23 @@ export class MapManager {
             
             // Create marker with custom icon if available
             if (icon.iconUrl) {
+                // Calculate scaled icon size
+                const baseSize = icon.iconSize || CONFIG.kml.icons.defaultSize;
+                const scaledSize = [
+                    Math.round(baseSize[0] * CONFIG.kml.icons.scale),
+                    Math.round(baseSize[1] * CONFIG.kml.icons.scale)
+                ];
+                const scaledAnchor = [
+                    Math.round(scaledSize[0] / 2),
+                    Math.round(scaledSize[1] / 2)
+                ];
+                
                 const customIcon = L.icon({
                     iconUrl: icon.iconUrl,
-                    iconSize: icon.iconSize || CONFIG.kml.icons.defaultSize,
-                    iconAnchor: icon.iconAnchor || CONFIG.kml.icons.defaultAnchor,
-                    popupAnchor: [0, -(icon.iconSize?.[1] || CONFIG.kml.icons.defaultSize[1]) / 2],
-                    className: 'kml-icon'
+                    iconSize: scaledSize,
+                    iconAnchor: scaledAnchor,
+                    popupAnchor: [0, -scaledSize[1] / 2],
+                    className: 'custom-icon'
                 });
                 
                 marker = L.marker(latLng, { icon: customIcon });
@@ -341,5 +359,35 @@ export class MapManager {
      */
     areIconsVisible() {
         return this.iconsVisible;
+    }
+
+    /**
+     * Set map opacity
+     * @param {number} opacity - Opacity value (0-100)
+     */
+    setMapOpacity(opacity) {
+        // Clamp opacity value between 0 and 100
+        opacity = Math.max(0, Math.min(100, opacity));
+        
+        // Convert to 0-1 range for Leaflet
+        const leafletOpacity = opacity / 100;
+        
+        // Update current tile layer opacity if it exists
+        if (this.currentTileLayer) {
+            this.currentTileLayer.setOpacity(leafletOpacity);
+        }
+        
+        console.log(`MapManager: Map opacity set to ${opacity}%`);
+    }
+
+    /**
+     * Get current map opacity
+     * @returns {number} Current opacity (0-100)
+     */
+    getMapOpacity() {
+        if (this.currentTileLayer) {
+            return Math.round(this.currentTileLayer.options.opacity * 100);
+        }
+        return CONFIG.map.opacity;
     }
 }
